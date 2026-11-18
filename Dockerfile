@@ -11,8 +11,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Luego el código de la aplicación
+# Luego el código de la aplicación y la carpeta static (logo)
 COPY app.py .
+COPY static/ static/
 
 # Puerto en el que escucha la app
 EXPOSE 5000

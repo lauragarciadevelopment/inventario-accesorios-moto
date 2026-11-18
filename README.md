@@ -62,7 +62,7 @@ Notas:
 4. Recargar la página: el producto sigue ahí porque está en el volumen `datos_inventario`.
 
 ## Arquitectura
-- **app**: contenedor construido con el Dockerfile propio (Flask).
+- **app**: contenedor construido con el Dockerfile propio (Flask). El logo está en `static/logo.png` y el Dockerfile lo copia dentro de la imagen.
 - **db**: contenedor PostgreSQL con el volumen `datos_inventario`.
 - **red_inventario**: red de Docker; la app llega a la base de datos por el nombre `db`.
 - Las credenciales se pasan por variables de entorno (`.env`, no se sube a GitHub).

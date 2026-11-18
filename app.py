@@ -66,30 +66,79 @@ def iniciar_db():
 
 PAGINA = """<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
-<title>Inventario de accesorios para moto</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoaccesorios · Inventario</title>
+<link rel="icon" href="/static/logo.png">
 <style>
-body{font-family:sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem}
-input,select{padding:.4rem;margin:.2rem}button{padding:.4rem .8rem}
-table{border-collapse:collapse;width:100%;margin-top:1rem}
-td,th{border:1px solid #ccc;padding:.4rem;text-align:left}
-.bajo{background:#ffe0e0}
+:root{--oscuro:#0e0e11;--naranja:#ff6a1a;--naranja2:#e8197d;--degradado:linear-gradient(90deg,#ff7a18,#ff3d5a 55%,#e8197d);--fondo:#f3f4f6;--borde:#e2e5ea;--texto:#1f2933}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background:var(--fondo);color:var(--texto)}
+header{background:var(--oscuro);color:#fff;border-bottom:4px solid transparent;border-image:var(--degradado) 1}
+.barra{max-width:1000px;margin:auto;padding:1rem 1.25rem;display:flex;align-items:center;gap:.9rem}
+.logo{width:88px;height:88px;flex:none;border-radius:50%;padding:2px;background:var(--degradado)}
+.barra h1{margin:0;font-size:1.45rem;letter-spacing:.3px}
+.barra p{margin:.15rem 0 0;color:#aab2bd;font-size:.9rem}
+main{max-width:1000px;margin:1.25rem auto;padding:0 1.25rem}
+.tarjeta{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.tarjeta h2{margin:0 0 .7rem;font-size:1rem;color:var(--oscuro)}
+.form{display:flex;flex-wrap:wrap;gap:.5rem}
+input,select{min-width:0;padding:.55rem .65rem;border:1px solid #cfd4db;border-radius:6px;font-size:.95rem;background:#fff}
+input:focus,select:focus{outline:2px solid var(--naranja);border-color:var(--naranja)}
+#nombre{flex:2 1 180px}#categoria{flex:1 1 150px}#talla{flex:0 1 115px}#precio,#stock{flex:0 1 105px}
+button{cursor:pointer;border:0;border-radius:6px;padding:.55rem 1.1rem;font-size:.95rem;font-weight:600}
+.principal{background:var(--degradado);color:#fff}.principal:hover{filter:brightness(1.08)}
+.eliminar{background:transparent;color:#b42318;border:1px solid #f1b8b2;padding:.35rem .7rem;font-weight:500}
+.eliminar:hover{background:#fdecea}
+.resumen{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem}
+.dato{flex:1 1 160px;background:#fff;border:1px solid var(--borde);border-left:5px solid var(--naranja);border-radius:8px;padding:.6rem .9rem}
+.dato.alerta{border-left-color:#d92d20}
+.dato b{display:block;font-size:1.5rem}.dato span{color:#5f6b7a;font-size:.85rem}
+.filtro{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.filtro small{color:#5f6b7a}
+table{border-collapse:collapse;width:100%;margin-top:.8rem;font-size:.95rem}
+th{background:var(--oscuro);color:#fff;text-align:left;padding:.6rem;font-weight:600}
+td{padding:.55rem .6rem;border-bottom:1px solid var(--borde)}
+tbody tr:hover{background:#fafafa}
+tr.bajo td{background:#fdecea}
+.etiqueta{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.8rem;font-weight:600;color:#fff}
+.poco{display:inline-block;margin-left:.4rem;padding:.1rem .45rem;border-radius:4px;background:#d92d20;color:#fff;font-size:.72rem;font-weight:700}
+.num{text-align:right}
+#aviso{color:#b42318;font-weight:600;margin:.6rem 0 0}
+footer{text-align:center;color:#8a94a3;font-size:.8rem;margin:1.5rem 0}
 </style></head><body>
-<h1>Inventario de accesorios para moto</h1>
-<div>
+<header><div class="barra">
+<img class="logo" src="/static/logo.png" alt="Logo motoaccesorios">
+<div><h1>Inventario de accesorios para moto</h1>
+<p>Guantes · Chaquetas · Reflectivos · Candados con alarma · Guayas</p></div>
+</div></header>
+<main>
+<div class="resumen">
+<div class="dato"><b id="totalProductos">0</b><span>productos registrados</span></div>
+<div class="dato"><b id="totalUnidades">0</b><span>unidades en stock</span></div>
+<div class="dato alerta"><b id="totalBajo">0</b><span>con stock bajo (3 o menos)</span></div>
+</div>
+<div class="tarjeta"><h2>Agregar producto</h2>
+<div class="form">
 <input id="nombre" placeholder="Nombre del producto">
 <select id="categoria"></select>
-<input id="talla" placeholder="Talla (opcional)" size="10">
-<input id="precio" type="number" placeholder="Precio">
-<input id="stock" type="number" placeholder="Stock">
-<button onclick="agregar()">Agregar</button>
-</div>
-<div style="margin-top:1rem">Filtrar:
-<select id="filtro" onchange="cargar()"><option value="">Todas</option></select>
-<small>(filas en rojo: stock de 3 o menos)</small></div>
-<p id="aviso" style="color:#b00;font-weight:bold"></p>
-<table><thead><tr><th>ID</th><th>Producto</th><th>Categoría</th><th>Talla</th><th>Precio</th><th>Stock</th><th></th></tr></thead>
+<input id="talla" placeholder="Talla">
+<input id="precio" type="number" min="0" placeholder="Precio">
+<input id="stock" type="number" min="0" placeholder="Stock">
+<button class="principal" onclick="agregar()">Agregar</button>
+</div></div>
+<div class="tarjeta">
+<div class="filtro"><h2 style="margin:0">Inventario</h2>
+<select id="filtro" onchange="cargar()"><option value="">Todas las categorías</option></select>
+<small>Filas en rojo: stock de 3 o menos</small></div>
+<p id="aviso"></p>
+<table><thead><tr><th>ID</th><th>Producto</th><th>Categoría</th><th>Talla</th><th class="num">Precio</th><th class="num">Stock</th><th></th></tr></thead>
 <tbody id="lista"></tbody></table>
+</div>
+</main>
+<footer>motoaccesorios_med · Proyecto Sistemas Operativos · Flask + PostgreSQL con Docker Compose</footer>
 <script>
+const COLORES={"Guantes":"#2563eb","Chaquetas":"#7c3aed","Reflectivos":"#ca8a04","Candados con alarma":"#059669","Guayas":"#475569"};
+const pesos=new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0});
 async function categorias(){
   const cats=await (await fetch("/api/categorias")).json();
   for(const c of cats){
@@ -99,6 +148,7 @@ async function categorias(){
     }
   }
 }
+function celda(tr,texto,clase){const td=document.createElement("td"); td.textContent=texto??""; if(clase) td.className=clase; tr.appendChild(td); return td;}
 async function cargar(){
   const f=document.getElementById("filtro").value;
   const url="/api/productos"+(f?"?categoria="+encodeURIComponent(f):"");
@@ -107,16 +157,24 @@ async function cargar(){
   const tb=document.getElementById("lista"); tb.innerHTML="";
   document.getElementById("aviso").textContent = r.ok ? "" : items.error;
   if(!r.ok) return;
+  let unidades=0, bajos=0;
   for(const p of items){
+    unidades+=p.stock; if(p.stock<=3) bajos++;
     const tr=document.createElement("tr");
     if(p.stock<=3) tr.className="bajo";
-    for(const k of ["id","nombre","categoria","talla","precio","stock"]){
-      const td=document.createElement("td"); td.textContent=p[k]??""; tr.appendChild(td);
-    }
+    celda(tr,p.id); celda(tr,p.nombre);
+    const tc=celda(tr,""); const e=document.createElement("span");
+    e.className="etiqueta"; e.style.background=COLORES[p.categoria]||"#475569"; e.textContent=p.categoria; tc.appendChild(e);
+    celda(tr,p.talla); celda(tr,pesos.format(p.precio),"num");
+    const ts=celda(tr,p.stock,"num");
+    if(p.stock<=3){const b=document.createElement("span"); b.className="poco"; b.textContent="POCO"; ts.appendChild(b);}
     const td=document.createElement("td"); const b=document.createElement("button");
-    b.textContent="Eliminar"; b.onclick=()=>eliminar(p.id); td.appendChild(b); tr.appendChild(td);
+    b.className="eliminar"; b.textContent="Eliminar"; b.onclick=()=>eliminar(p.id); td.appendChild(b); tr.appendChild(td);
     tb.appendChild(tr);
   }
+  document.getElementById("totalProductos").textContent=items.length;
+  document.getElementById("totalUnidades").textContent=unidades;
+  document.getElementById("totalBajo").textContent=bajos;
 }
 async function agregar(){
   const d={};
