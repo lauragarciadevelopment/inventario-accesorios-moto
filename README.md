@@ -26,12 +26,31 @@ Construida con Python (Flask) y PostgreSQL, ejecutada con Docker.
    ```
 4. Abrir http://localhost:5000
 
-## Entrega 1: solo el contenedor de la app
+## Entrega 1: solo el contenedor de la app (docker build + docker run)
+La misma imagen funciona sin base de datos: si **no** recibe la variable `DB_HOST`,
+guarda los productos en memoria (la página muestra "Modo memoria").
+
 ```
 docker build -t inventario-accesorios .
-docker run -d -p 5000:5000 --name app-accesorios inventario-accesorios
+docker run -d -p 5001:5000 --name app-accesorios inventario-accesorios
 ```
-(Para la entrega 1 se puede usar una versión sin PostgreSQL, guardando los datos en memoria.)
+Abrir http://localhost:5001
+
+- `-t inventario-accesorios`: nombre de la imagen.
+- `-d`: el contenedor corre en segundo plano.
+- `-p 5001:5000`: el puerto 5001 del PC se conecta al 5000 del contenedor
+  (se usa 5001 para no chocar con la versión de Compose, que usa el 5000).
+- `--name app-accesorios`: nombre del contenedor.
+
+Comandos para revisarlo y quitarlo:
+```
+docker images
+docker ps
+docker logs app-accesorios
+docker stop app-accesorios
+docker rm app-accesorios
+```
+En este modo los datos se pierden al borrar el contenedor; la Entrega 2 lo resuelve con PostgreSQL y un volumen.
 
 ## Comandos útiles (estado, logs, detención y reinicio)
 Ejecutar dentro de la carpeta del proyecto:

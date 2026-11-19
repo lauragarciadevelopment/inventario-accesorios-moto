@@ -18,6 +18,14 @@ logging.getLogger("werkzeug").addFilter(lambda r: "/health" not in r.getMessage(
 
 CATEGORIAS = ["Guantes", "Chaquetas", "Reflectivos", "Candados con alarma", "Guayas"]
 
+# Dos modos con la MISMA imagen:
+# - Sin la variable DB_HOST  -> modo memoria (Entrega 1: solo "docker run", sin base de datos).
+#   Los datos se pierden al borrar el contenedor.
+# - Con DB_HOST (compose.yaml) -> modo PostgreSQL (Entrega 2: datos en el volumen).
+MODO_MEMORIA = not os.environ.get("DB_HOST")
+memoria = []          # lista de productos cuando no hay base de datos
+siguiente_id = 1
+
 
 def conectar():
     # Los datos de conexión vienen de variables de entorno (no están en el código)
@@ -78,6 +86,7 @@ header{background:var(--oscuro);color:#fff;border-bottom:4px solid transparent;b
 .logo{width:88px;height:88px;flex:none;border-radius:50%;padding:2px;background:var(--degradado)}
 .barra h1{margin:0;font-size:1.45rem;letter-spacing:.3px}
 .barra p{margin:.15rem 0 0;color:#aab2bd;font-size:.9rem}
+.modo{margin-left:auto;font-size:.8rem;padding:.3rem .7rem;border-radius:999px;border:1px solid #ff6a1a;color:#ffb48a;white-space:nowrap}
 main{max-width:1000px;margin:1.25rem auto;padding:0 1.25rem}
 .tarjeta{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .tarjeta h2{margin:0 0 .7rem;font-size:1rem;color:var(--oscuro)}
@@ -110,6 +119,7 @@ footer{text-align:center;color:#8a94a3;font-size:.8rem;margin:1.5rem 0}
 <img class="logo" src="/static/logo.png" alt="Logo motoaccesorios">
 <div><h1>Inventario de accesorios para moto</h1>
 <p>Guantes · Chaquetas · Reflectivos · Candados con alarma · Guayas</p></div>
+<span class="modo">MODO_TEXTO</span>
 </div></header>
 <main>
 <div class="resumen">
@@ -191,7 +201,9 @@ categorias().then(cargar);
 
 @app.route("/")
 def inicio():
-    return PAGINA
+    modo = ("Modo memoria (sin base de datos)" if MODO_MEMORIA
+            else "Modo PostgreSQL (datos en volumen)")
+    return PAGINA.replace("MODO_TEXTO", modo)
 
 
 @app.errorhandler(psycopg2.OperationalError)
@@ -203,6 +215,8 @@ def sin_base_de_datos(e):
 
 @app.route("/health")
 def health():
+    if MODO_MEMORIA:
+        return jsonify(estado="ok", base_de_datos="no usa (modo memoria)")
     # Comprueba que la app y la base de datos se comunican por la red de Docker
     ejecutar("SELECT 1")
     return jsonify(estado="ok", base_de_datos="conectada")
@@ -216,6 +230,8 @@ def categorias():
 @app.route("/api/productos", methods=["GET"])
 def listar():
     cat = request.args.get("categoria")
+    if MODO_MEMORIA:
+        return jsonify([p for p in memoria if not cat or p["categoria"] == cat])
     sql = ("SELECT id, nombre, categoria, talla, precio::float AS precio, stock "
            "FROM productos")
     params = ()
@@ -239,17 +255,26 @@ def crear():
         return jsonify(error="Precio y stock deben ser números"), 400
     if precio < 0 or stock < 0:
         return jsonify(error="Precio y stock no pueden ser negativos"), 400
-    ejecutar(
-        "INSERT INTO productos (nombre, categoria, talla, precio, stock) "
-        "VALUES (%s, %s, %s, %s, %s)",
-        (d["nombre"], d["categoria"], d.get("talla") or None, precio, stock))
+    global siguiente_id
+    if MODO_MEMORIA:
+        memoria.append({"id": siguiente_id, "nombre": d["nombre"], "categoria": d["categoria"],
+                        "talla": d.get("talla") or None, "precio": precio, "stock": stock})
+        siguiente_id += 1
+    else:
+        ejecutar(
+            "INSERT INTO productos (nombre, categoria, talla, precio, stock) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (d["nombre"], d["categoria"], d.get("talla") or None, precio, stock))
     log.info("Producto agregado: %s (%s), stock %d", d["nombre"], d["categoria"], stock)
     return jsonify(mensaje="Producto agregado"), 201
 
 
 @app.route("/api/productos/<int:producto_id>", methods=["DELETE"])
 def eliminar(producto_id):
-    ejecutar("DELETE FROM productos WHERE id = %s", (producto_id,))
+    if MODO_MEMORIA:
+        memoria[:] = [p for p in memoria if p["id"] != producto_id]
+    else:
+        ejecutar("DELETE FROM productos WHERE id = %s", (producto_id,))
     log.info("Producto eliminado: id %d", producto_id)
     return jsonify(mensaje="Producto eliminado")
 
@@ -263,7 +288,10 @@ def apagar(signum, frame):
 
 signal.signal(signal.SIGTERM, apagar)
 
-iniciar_db()
+if MODO_MEMORIA:
+    log.info("No hay variable DB_HOST: modo memoria (sin base de datos).")
+else:
+    iniciar_db()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
